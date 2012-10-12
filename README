@@ -1,0 +1,54 @@
+Chain Debug Module
+ This little Linux kernel module gives you the ability to debug kernel "chain"
+ events from the networking subsystem. It enables the appropriate hooks by 
+ checking if the chains were enabled in the kernel config.  
+ It can be quite helpful if you need to trace various events and see what is
+ generated.
+
+ The currently supported chains are:
+ netdev_chain
+ inetaddr_chain
+ inet6addr_chain (to be committed)
+
+ It supports all events from the netdev and inetaddr chains. Chaindbg will also
+ try to print any additional helpful information related to the event.
+
+ Installation:
+ # make && make install
+ # modprobe chaindbg
+ Now you should be able to see this in your dmesg:
+ [699499.715416] CHAINDBG loading
+ [699499.715422] C: NETDEV DEV: lo EVENT: NETDEV_REGISTER (0x5)
+ [699499.715423] C: NETDEV DEV: lo EVENT: NETDEV_UP (0x1)
+ ... 
+
+ Removal:
+ # rmmod chaindbg
+ You should see this in your dmesg:
+ [699497.665141] CHAINDBG unloading
+ [699497.665148] C: NETDEV DEV: lo EVENT: NETDEV_GOING_DOWN (0x9)
+ [699497.665150] C: NETDEV DEV: lo EVENT: NETDEV_DOWN (0x2)
+ [699497.665151] C: NETDEV DEV: lo EVENT: NETDEV_UNREGISTER (0x6)
+ [699497.665153] C: NETDEV DEV: lo EVENT: NETDEV_UNREGISTER_FINAL (0x11)
+
+ Example output:
+ These events are triggered by various interface manipulations done with
+ ifconfig.
+ [694896.024079] C: NETDEV DEV: em1.500 EVENT: NETDEV_REGISTER (0x5)
+ [694896.024080] C: NETDEV DEV: em1.500 EVENT: NETDEV_UP (0x1)
+ [694942.131049] C: NETDEV DEV: em1.500 EVENT: NETDEV_CHANGEADDR (0x8) MAC: 00:11:22:33:44:55
+ [696457.016389] C: NETDEV DEV: em1.500 EVENT: NETDEV_GOING_DOWN (0x9)
+ [696457.020609] C: NETDEV DEV: em1.500 EVENT: NETDEV_DOWN (0x2)
+ # ifconfig em1.500 192.168.50.2
+ First it removes the old IP address (192.168.50.1)
+ [693029.167595] C: INETADDR DEV: em1.500 EVENT: NETDEV_DOWN (0x2) ADDR: 192.168.50.1
+ Then it adds the new one
+ [693029.167632] C: INETADDR DEV: em1.500 EVENT: NETDEV_UP (0x1) ADDR: 192.168.50.2
+ [693029.168826] C: INETADDR DEV: em1.500 EVENT: NETDEV_DOWN (0x2) ADDR: 192.168.50.2
+ [693029.168850] C: INETADDR DEV: em1.500 EVENT: NETDEV_UP (0x1) ADDR: 192.168.50.2
+ # ifconfig em1.500 hw ether 00:11:22:33:44:55
+ [694942.131049] C: NETDEV DEV: em1.500 EVENT: NETDEV_CHANGEADDR (0x8) MAC: 00:11:22:33:44:55
+ # ifconfig em1.500 mtu 1400
+ [699512.262366] C: NETDEV DEV: em1.500 EVENT: NETDEV_CHANGEMTU (0x7) MTU: 1400
+
+ Author: Nikolay Aleksandrov (nik@BlackWall.org)
