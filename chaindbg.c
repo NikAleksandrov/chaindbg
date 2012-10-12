@@ -1,3 +1,14 @@
+/*
+ * chaindbg.c
+ * Linux kernel networking subsystem chains debug module
+ *
+ * This module will register chain handlers and print information about events 
+ * which have occurred with useful additional information related to them.
+ *
+ * Distributed under the terms of the GNU GPL version 2.
+ * Copyright (c) Nikolay Aleksandrov (nik@BlackWall.org) 2012 
+ */
+
 #include <linux/module.h>	
 #include <linux/kernel.h>
 #include <linux/init.h>	
@@ -132,4 +143,4 @@ module_init(cdbg_init);
 module_exit(cdbg_exit);
 
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Nikolay Aleksandrov <nikolay@redhat.com>");
+MODULE_AUTHOR("Nikolay Aleksandrov <nik@BlackWall.org>");
