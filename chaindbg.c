@@ -144,12 +144,10 @@ void cdbg_get_strings(unsigned long long bits, int bitlen, const char *strings[]
 {
 	int i;
 	for(i=0;i<bitlen%((sizeof(unsigned long long)*8)+1);i++) {
-		if ((bits>>i) & 0x1) {
-			if (strings[i] == NULL)
-				return;
-			else
-				snprintf(buf, buflen, "%s %s", buf, strings[i]);
-		}
+		if (strings[i] == NULL)
+			return;
+		if ((bits>>i) & 0x1) 
+			snprintf(buf, buflen, "%s %s", buf, strings[i]);
 	}
 }
 
@@ -165,11 +163,7 @@ static int cdbg_netdev_event(struct notifier_block *this,
 	if (nd_buf == NULL) 
 		return NOTIFY_DONE;
 
-	if (event > ND_END) {
-		snprintf(nd_buf, buflen, "C: NETDEV DEV: %s EVENT: 0x%lx", dev->name, event);
-		goto done;
-	}
-	snprintf(nd_buf, buflen, "C: NETDEV DEV: %s EVENT: NETDEV_%s (0x%lx)", dev->name, ND_EVENTS[event], event);
+	snprintf(nd_buf, buflen, "C: NETDEV DEV: %s EVENT: NETDEV_%s (0x%lx)", dev->name, event > ND_END ? "" : ND_EVENTS[event], event);
 
 	switch (event) {
 		case NETDEV_CHANGEADDR:
@@ -198,7 +192,6 @@ static int cdbg_netdev_event(struct notifier_block *this,
 		default:
 		break;
 	}
-done:
 	nd_buf[strlen(nd_buf) >= buflen ? strlen(nd_buf) - 1 : strlen(nd_buf)] = '\n';
 	printk(KERN_INFO "%s", nd_buf);
 	kfree(nd_buf);
@@ -214,15 +207,9 @@ static int cdbg_inetaddr_event(struct notifier_block *this,
 
 	dev = ifa->ifa_dev ? ifa->ifa_dev->dev : NULL;
 	if (dev == NULL)
-		goto done;
+		return NOTIFY_DONE;
+	printk(KERN_INFO "C: INETADDR DEV: %s EVENT: NETDEV_%s (0x%lx) ADDR: %pI4\n", dev->name, event > ND_END ? "" : ND_EVENTS[event], event, &ifa->ifa_address);
 
-	if (event > ND_END) {
-		printk(KERN_INFO "C: INETADDR DEV: %s EVENT: 0x%lx ADDR: %pI4\n", dev->name, event, &ifa->ifa_address);
-		goto done;
-	}
-	printk(KERN_INFO "C: INETADDR DEV: %s EVENT: NETDEV_%s (0x%lx) ADDR: %pI4\n", dev->name, ND_EVENTS[event], event, &ifa->ifa_address);
-
-done:
 	return NOTIFY_DONE;
 }
 
@@ -244,15 +231,9 @@ static int cdbg_inet6addr_event(struct notifier_block *this,
 
 	dev = ifa->idev ? ifa->idev->dev : NULL;
 	if (dev == NULL)
-		goto done;
+		return NOTIFY_DONE;
+	printk(KERN_INFO "C: INET6ADDR DEV: %s EVENT: NETDEV_%s (0x%lx) ADDR: %pI6\n", dev->name, event > ND_END ? "" : ND_EVENTS[event], event, &ifa->addr);
 
-	if (event > ND_END) {
-		printk(KERN_INFO "C: INET6ADDR DEV: %s EVENT: 0x%lx ADDR: %pI6\n", dev->name, event, &ifa->addr);
-		goto done;
-	}
-	printk(KERN_INFO "C: INET6ADDR DEV: %s EVENT: NETDEV_%s (0x%lx) ADDR: %pI6\n", dev->name, ND_EVENTS[event], event, &ifa->addr);
-
-done:
 	return NOTIFY_DONE;
 }
 
