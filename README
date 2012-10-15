@@ -6,12 +6,11 @@ Chain Debug Module
  generated.
 
  The currently supported chains are:
- netdev_chain
- inetaddr_chain
- inet6addr_chain (to be committed)
+  - netdev_chain
+  - inetaddr_chain
+  - inet6addr_chain
 
- It supports all events from the netdev and inetaddr chains. Chaindbg will also
- try to print any additional helpful information related to the event.
+ Chaindbg will print additional helpful information related to the event.
 
  Installation:
  # make && make install
@@ -46,6 +45,10 @@ Chain Debug Module
  [693029.167632] C: INETADDR DEV: em1.500 EVENT: NETDEV_UP (0x1) ADDR: 192.168.50.2
  [693029.168826] C: INETADDR DEV: em1.500 EVENT: NETDEV_DOWN (0x2) ADDR: 192.168.50.2
  [693029.168850] C: INETADDR DEV: em1.500 EVENT: NETDEV_UP (0x1) ADDR: 192.168.50.2
+ # ethtool -K em1.500 gso off
+ [ 1420.571126] C: NETDEV DEV: em1.500 EVENT: NETDEV_FEAT_CHANGE (0xb) FEATURES: (0x20115029) tx-scatter-gather tx-checksum-ip-generic highdma tx-lockless rx-gro tx-tcp-segmentation tx-tcp6-segmentation rx-checksum
+ # ifconfig em1.500 -multicast
+ [ 1687.019506] C: NETDEV DEV: em1.500 EVENT: NETDEV_CHANGE (0x4) FLAGS: (0x3) IFF_UP IFF_BROADCAST
  # ifconfig em1.500 hw ether 00:11:22:33:44:55
  [694942.131049] C: NETDEV DEV: em1.500 EVENT: NETDEV_CHANGEADDR (0x8) MAC: 00:11:22:33:44:55
  # ifconfig em1.500 mtu 1400
