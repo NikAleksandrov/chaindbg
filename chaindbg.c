@@ -147,6 +147,11 @@ void cdbg_get_strings(unsigned long long bits, int bitlen, const char *strings[]
 		if (strings[i] == NULL)
 			return;
 		if ((bits>>i) & 0x1) 
+			/* Apparently such call to sprintf should not be defined
+			 * but in all implementations I've seen this works 
+			 * except for GNU libc. Since this module is for the
+			 * Linux kernel and such a call works there...
+			 */
 			snprintf(buf, buflen, "%s %s", buf, strings[i]);
 	}
 }
