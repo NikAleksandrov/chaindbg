@@ -161,7 +161,7 @@ static int cdbg_netdev_event(struct notifier_block *this,
 				unsigned long event, void *ptr)
 {
 	struct net_device *dev = (struct net_device *)ptr;
-	int buflen = 128 * sizeof(netdev_features_strings);
+	int buflen = 128 + ((sizeof(netdev_features_strings)/sizeof(char*))*32);
 	char *nd_buf;
 
 	nd_buf = kzalloc(buflen, GFP_KERNEL);
