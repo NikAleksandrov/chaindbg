@@ -2,16 +2,16 @@
  * chaindbg.c
  * Linux kernel networking subsystem chains debug module
  *
- * This module will register chain handlers and print information about events 
+ * This module will register chain handlers and print information about events
  * which have occurred with useful additional information related to them.
  *
  * Distributed under the terms of the GNU GPL version 2.
- * Copyright (c) Nikolay Aleksandrov (nik@BlackWall.org) 2012 
+ * Copyright (c) Nikolay Aleksandrov (nik@BlackWall.org) 2012
  */
 
-#include <linux/module.h>	
+#include <linux/module.h>
 #include <linux/kernel.h>
-#include <linux/init.h>	
+#include <linux/init.h>
 #include <linux/types.h>
 #include <linux/netdevice.h>
 #include <linux/rcupdate.h>
@@ -23,8 +23,15 @@
 #include <net/addrconf.h>
 #endif
 
+#ifdef NETDEV_CHANGEINFODATA
+#define ND_END NETDEV_CHANGEINFODATA
+#elif defined(NETDEV_PRECHANGEMTU)
+#define ND_END NETDEV_PRECHANGEMTU
+#else
 #define ND_END NETDEV_JOIN
+#endif
 
+/* Taken from include/linux/netdevice.h */
 static const char *ND_EVENTS[] = {
 	"",
 	"UP",
@@ -47,9 +54,18 @@ static const char *ND_EVENTS[] = {
 	"RELEASE",
 	"NOTIFY_PEERS",
 	"JOIN",
+#ifdef NETDEV_PRECHANGEMTU
+	"CHANGEUPPER",
+	"RESEND_IGMP",
+	"PRECHANGEMTU",
+#endif
+#ifdef NETDEV_CHANGEINFODATA
+	"CHANGEINFODATA",
+#endif
 	NULL
 };
 
+/* Taken from net/core/ethtool.c and include/linux/netdev_features.h */
 static const char *netdev_features_strings[] = {
 	"tx-scatter-gather",
 	"tx-checksum-ipv4",
@@ -85,9 +101,15 @@ static const char *netdev_features_strings[] = {
 	"loopback",
 	"rx-fcs",
 	"rx-all",
+	"tx-vlan-stag-hw-insert",
+	"rx-vlan-stag-hw-parse",
+	"rx-vlan-stag-filter",
+	"l2-fwd-offload",
+	"busy-poll",
 	NULL
 };
 
+/* Taken from uapi/linux/if.h */
 static const char *netdev_flags[] =
 {
 	"IFF_UP",
@@ -140,15 +162,17 @@ static const char *netdev_priv_flags[] =
 };
 */
 
-void cdbg_get_strings(unsigned long long bits, int bitlen, const char *strings[], char *buf, int buflen)
+void cdbg_get_strings(unsigned long long bits, int bitlen,
+		      const char *strings[], char *buf, int buflen)
 {
 	int i;
-	for(i=0;i<bitlen%((sizeof(unsigned long long)*8)+1);i++) {
+
+	for(i = 0; i < bitlen % ((sizeof(unsigned long long) * 8) + 1); i++) {
 		if (strings[i] == NULL)
 			return;
-		if ((bits>>i) & 0x1) 
+		if ((bits>>i) & 0x1)
 			/* Apparently such call to sprintf should not be defined
-			 * but in all implementations I've seen this works 
+			 * but in all implementations I've seen this works
 			 * except for GNU libc. Since this module is for the
 			 * Linux kernel and such a call works there...
 			 */
@@ -158,54 +182,55 @@ void cdbg_get_strings(unsigned long long bits, int bitlen, const char *strings[]
 
 #ifdef CONFIG_INET
 static int cdbg_netdev_event(struct notifier_block *this,
-				unsigned long event, void *ptr)
+			     unsigned long event, void *ptr)
 {
-	struct net_device *dev = (struct net_device *)ptr;
 	int buflen = 128 + ((sizeof(netdev_features_strings)/sizeof(char*))*32);
+	struct net_device *dev = netdev_notifier_info_to_dev(ptr);
 	char *nd_buf;
 
 	nd_buf = kzalloc(buflen, GFP_KERNEL);
-	if (nd_buf == NULL) 
+	if (nd_buf == NULL)
 		return NOTIFY_DONE;
 
-	snprintf(nd_buf, buflen, "C: NETDEV DEV: %s EVENT: NETDEV_%s (0x%lx)", dev->name, event > ND_END ? "" : ND_EVENTS[event], event);
+	snprintf(nd_buf, buflen, "C: NETDEV DEV: %s EVENT: NETDEV_%s (0x%lx)",
+		 dev->name, event > ND_END ? "" : ND_EVENTS[event], event);
 
 	switch (event) {
-		case NETDEV_CHANGEADDR:
-			snprintf(nd_buf, buflen, "%s MAC: %pM", nd_buf, dev->dev_addr);
+	case NETDEV_CHANGEADDR:
+		snprintf(nd_buf, buflen, "%s MAC: %pM", nd_buf, dev->dev_addr);
 		break;
-
-		case NETDEV_CHANGEMTU:
-			snprintf(nd_buf, buflen, "%s MTU: %d", nd_buf, dev->mtu);
+	case NETDEV_PRECHANGEMTU:
+	case NETDEV_CHANGEMTU:
+		snprintf(nd_buf, buflen, "%s %s MTU: %d",
+			 nd_buf, event == NETDEV_CHANGEMTU ? "NEW" : "OLD",
+			 dev->mtu);
 		break;
-		
-		case NETDEV_PRE_TYPE_CHANGE:
-		case NETDEV_POST_TYPE_CHANGE:
-			snprintf(nd_buf, buflen, "%s TYPE: 0x%x", nd_buf, dev->type);
+	case NETDEV_PRE_TYPE_CHANGE:
+	case NETDEV_POST_TYPE_CHANGE:
+		snprintf(nd_buf, buflen, "%s TYPE: 0x%x", nd_buf, dev->type);
 		break;
-
-		case NETDEV_CHANGE:
-			snprintf(nd_buf, buflen, "%s FLAGS: (0x%x)", nd_buf, dev->flags);
-			cdbg_get_strings(dev->flags, sizeof(dev->flags)*8, (const char **)&netdev_flags, nd_buf, buflen);
+	case NETDEV_CHANGE:
+		snprintf(nd_buf, buflen, "%s FLAGS: (0x%x)", nd_buf, dev->flags);
+		cdbg_get_strings(dev->flags, sizeof(dev->flags) * 8,
+				 netdev_flags, nd_buf, buflen);
 		break;
-
-		case NETDEV_FEAT_CHANGE:
-			snprintf(nd_buf, buflen, "%s FEATURES: (0x%llx)", nd_buf, (unsigned long long)(dev->features));
-			cdbg_get_strings((unsigned long long)(dev->features), NETDEV_FEATURE_COUNT, (const char **)&netdev_features_strings, nd_buf, buflen);
+	case NETDEV_FEAT_CHANGE:
+		snprintf(nd_buf, buflen, "%s FEATURES: (0x%llx)", nd_buf, (unsigned long long)(dev->features));
+		cdbg_get_strings((unsigned long long)dev->features,
+				 NETDEV_FEATURE_COUNT, netdev_features_strings,
+				 nd_buf, buflen);
 		break;
-
-		default:
+	default:
 		break;
 	}
-	nd_buf[strlen(nd_buf) >= buflen ? strlen(nd_buf) - 1 : strlen(nd_buf)] = '\n';
-	printk(KERN_INFO "%s", nd_buf);
+	pr_info("%s\n", nd_buf);
 	kfree(nd_buf);
 
 	return NOTIFY_DONE;
 }
 
 static int cdbg_inetaddr_event(struct notifier_block *this,
-				unsigned long event, void *ptr)
+			       unsigned long event, void *ptr)
 {
 	struct in_ifaddr *ifa = (struct in_ifaddr *)ptr;
 	struct net_device *dev;
@@ -213,16 +238,18 @@ static int cdbg_inetaddr_event(struct notifier_block *this,
 	dev = ifa->ifa_dev ? ifa->ifa_dev->dev : NULL;
 	if (dev == NULL)
 		return NOTIFY_DONE;
-	printk(KERN_INFO "C: INETADDR DEV: %s EVENT: NETDEV_%s (0x%lx) ADDR: %pI4\n", dev->name, event > ND_END ? "" : ND_EVENTS[event], event, &ifa->ifa_address);
+	printk(KERN_INFO "C: INETADDR DEV: %s EVENT: NETDEV_%s (0x%lx) ADDR: %pI4\n",
+	       dev->name, event > ND_END ? "" : ND_EVENTS[event], event,
+	       &ifa->ifa_address);
 
 	return NOTIFY_DONE;
 }
 
-static struct notifier_block	cdbg_netdev_cb = {
+static struct notifier_block cdbg_netdev_cb = {
 	.notifier_call = cdbg_netdev_event,
 };
 
-static struct notifier_block	cdbg_inetaddr_cb = {
+static struct notifier_block cdbg_inetaddr_cb = {
 	.notifier_call = cdbg_inetaddr_event,
 };
 #endif /* CONFIG_INET */
@@ -237,12 +264,14 @@ static int cdbg_inet6addr_event(struct notifier_block *this,
 	dev = ifa->idev ? ifa->idev->dev : NULL;
 	if (dev == NULL)
 		return NOTIFY_DONE;
-	printk(KERN_INFO "C: INET6ADDR DEV: %s EVENT: NETDEV_%s (0x%lx) ADDR: %pI6\n", dev->name, event > ND_END ? "" : ND_EVENTS[event], event, &ifa->addr);
+	printk(KERN_INFO "C: INET6ADDR DEV: %s EVENT: NETDEV_%s (0x%lx) ADDR: %pI6\n",
+	       dev->name, event > ND_END ? "" : ND_EVENTS[event], event,
+	       &ifa->addr);
 
 	return NOTIFY_DONE;
 }
 
-static struct notifier_block	cdbg_inet6addr_cb = {
+static struct notifier_block cdbg_inet6addr_cb = {
 	.notifier_call = cdbg_inet6addr_event,
 };
 #endif /* IPV6 */

@@ -1,7 +1,7 @@
 Chain Debug Module
  This little Linux kernel module gives you the ability to debug kernel "chain"
- events from the networking subsystem. It enables the appropriate hooks by 
- checking if the chains were enabled in the kernel config.  
+ events from the networking subsystem. It enables the appropriate hooks by
+ checking if the chains were enabled in the kernel config.
  It can be quite helpful if you need to trace various events and see what is
  generated.
 
@@ -19,7 +19,7 @@ Chain Debug Module
  [699499.715416] CHAINDBG loading
  [699499.715422] C: NETDEV DEV: lo EVENT: NETDEV_REGISTER (0x5)
  [699499.715423] C: NETDEV DEV: lo EVENT: NETDEV_UP (0x1)
- ... 
+ ...
 
  Removal:
  # rmmod chaindbg
