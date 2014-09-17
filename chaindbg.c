@@ -199,7 +199,9 @@ static int cdbg_netdev_event(struct notifier_block *this,
 	case NETDEV_CHANGEADDR:
 		snprintf(nd_buf, buflen, "%s MAC: %pM", nd_buf, dev->dev_addr);
 		break;
+#ifdef NETDEV_PRECHANGEMTU
 	case NETDEV_PRECHANGEMTU:
+#endif
 	case NETDEV_CHANGEMTU:
 		snprintf(nd_buf, buflen, "%s %s MTU: %d",
 			 nd_buf, event == NETDEV_CHANGEMTU ? "NEW" : "OLD",
@@ -207,7 +209,10 @@ static int cdbg_netdev_event(struct notifier_block *this,
 		break;
 	case NETDEV_PRE_TYPE_CHANGE:
 	case NETDEV_POST_TYPE_CHANGE:
-		snprintf(nd_buf, buflen, "%s TYPE: 0x%x", nd_buf, dev->type);
+		snprintf(nd_buf, buflen, "%s %s TYPE: 0x%x",
+			 nd_buf, event == NETDEV_POST_TYPE_CHANGE ? "NEW" :
+								    "OLD",
+			 dev->type);
 		break;
 	case NETDEV_CHANGE:
 		snprintf(nd_buf, buflen, "%s FLAGS: (0x%x)", nd_buf, dev->flags);
