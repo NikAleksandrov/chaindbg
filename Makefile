@@ -4,6 +4,7 @@ all:
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
 
 install:
+        mkdir /lib/modules/$(shell uname -r)/misc
 	cp chaindbg.ko /lib/modules/$(shell uname -r)/misc
 	depmod /lib/modules/$(shell uname -r)/misc/chaindbg.ko
 
